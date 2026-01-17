@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azərbaycan TV - Pro Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
+    <style>
+        /* --- PROFESSIONAL DİZAYN (CSS) --- */
+        :root {
+            --primary-color: #e50914; /* Netflix Qırmızısı */
+            --bg-color: #141414;
+            --sidebar-bg: #1f1f1f;
+            --text-color: #ffffff;
+            --hover-color: #333;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sol Tərəf - Kanal Siyahısı */
+        .sidebar {
+            width: 300px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #333;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .header {
+            padding: 20px;
+            background-color: #000;
+            text-align: center;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary-color);
+        }
+
+        /* Axtarış Qutusu */
+        .search-box {
+            padding: 10px;
+            background: #2b2b2b;
+        }
+
+        .search-box input {
+            width: 93%;
+            padding: 10px;
+            border-radius: 4px;
+            border: none;
+            background: #404040;
+            color: white;
+            outline: none;
+        }
+
+        /* Kanal Listi */
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            list-style: none;
+            margin: 0;
+        }
+
+        /* Scrollbar Dizaynı */
+        .channel-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .channel-list::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        .channel-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #333;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .channel-item:hover {
+            background-color: var(--hover-color);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .channel-item.active {
+            background-color: #333;
+            color: var(--primary-color);
+            font-weight: bold;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        /* Sağ Tərəf - Video Player */
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            max-height: 100vh;
+            outline: none;
+        }
+
+        /* Yüklənmə İkonu (Spinner) */
+        .loader {
+            position: absolute;
+            border: 5px solid #333;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            display: none; /* Gizli */
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Status Mesajı */
+        .status-msg {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            color: #ccc;
+            font-size: 12px;
+        }
+
+        /* Mobil Görünüş */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 40%; order: 2; }
+            .main-content { height: 60%; order: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header">
+            <h1>AZ TV Player</h1>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Kanal axtar...">
+        </div>
+        <ul class="channel-list" id="channelList">
+            </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="loader" id="loader"></div>
+        <div class="status-msg" id="statusMsg"></div>
+        <video id="video" controls autoplay playsinline></video>
+    </div>
+
+    <script>
+        // --- 1. SƏNİN VERDİYİN KANALLARIN SİYAHISI ---
+        const channels = [
+            { name: "İctimai TV (HD)", url: "https://live.itv.az/itv.m3u8" },
+            { name: "ARB TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb.m3u8" },
+            { name: "ARB 24", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb-24.m3u8" },
+            { name: "ARB Günəş", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb-gunes.m3u8" },
+            { name: "Xəzər TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/xezer-tv.m3u8" },
+            { name: "Space TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/space-tv.m3u8" },
+            { name: "Baku TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/baku-tv.m3u8" },
+            { name: "Mədəniyyət TV", url: "https://str.yodacdn.net/medeniyyet/index.m3u8" },
+            { name: "Azad TV", url: "https://stream.atv.az/WebRTCAppEE/streams/780339739845112514894920_adaptive.m3u8" },
+            { name: "CBC Sport", url: "https://mn-nl.mncdn.com/cbcsports_live/cbcsports/playlist.m3u8" },
+            { name: "Kanal S", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/kanal-s.m3u8" },
+            { name: "MTV Azərbaycan", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/mtv-azerbaycan.m3u8" },
+            { name: "TMB TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/tmb-azerbaycan.m3u8" },
+            { name: "Dünya TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/dunya-tv.m3u8" },
+            { name: "APA TV", url: "http://rtmp.apa.tv/@pagroup!23.m3u8" }, // HTTP!
+            { name: "AzTV", url: "http://live.aztv.az/hls/aztv.m3u8" }, // HTTP!
+            { name: "Kəpəz TV", url: "http://85.132.78.122:8050/hls/stream/index.m3u8" }, // HTTP!
+            { name: "Alvin Channel", url: "https://cdn10-alvinchannel.yayin.com.tr/alvinchannel/alvinchannel/playlist.m3u8" },
+            { name: "AnewZ", url: "https://53be5ef2d13aa.streamlock.net/cubesanewz-secure/smil:cubesanewz-secure-web.smil/playlist.m3u8" }
+        ];
+
+        const video = document.getElementById('video');
+        const listContainer = document.getElementById('channelList');
+        const loader = document.getElementById('loader');
+        const statusMsg = document.getElementById('statusMsg');
+        const searchInput = document.getElementById('searchInput');
+        let hls = null;
+
+        // --- 2. KANALLARI SİYAHIYA DÜZMƏK ---
+        function renderChannels(filter = "") {
+            listContainer.innerHTML = "";
+            channels.forEach((channel, index) => {
+                if (channel.name.toLowerCase().includes(filter.toLowerCase())) {
+                    let li = document.createElement('li');
+                    li.className = 'channel-item';
+                    li.innerText = `📺 ${channel.name}`;
+                    li.onclick = () => loadChannel(channel.url, li);
+                    listContainer.appendChild(li);
+                }
+            });
+        }
+
+        // --- 3. VİDEO YÜKLƏMƏ (PROFESSIONAL MƏNTİQ) ---
+        function loadChannel(url, element) {
+            // Aktiv dizaynı dəyiş
+            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+
+            loader.style.display = 'block'; // Yüklənir işarəsini göstər
+            statusMsg.style.display = 'none';
+
+            // HTTP Link Xəbərdarlığı (HTTPS saytda HTTP link açılmaya bilər)
+            if (window.location.protocol === 'https:' && url.startsWith('http:')) {
+                showStatus("⚠️ Diqqət: Bu kanal şifrəsiz (HTTP) yayımdır. Brauzer bloklaya bilər.");
+            }
+
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy();
+                }
+                // HLS Parametrləri (Donmanı azaltmaq üçün)
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    loader.style.display = 'none';
+                    video.play().catch(e => console.log("Avtomatik oynatmaq üçün ekrana toxunun."));
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        loader.style.display = 'none';
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                showStatus("⚠️ Şəbəkə xətası. Kanalın serveri cavab vermir.");
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                showStatus("⚠️ Format xətası. Yayım bərpa edilir...");
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                showStatus("❌ Bu kanal hal-hazırda işləmir.");
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+            }
+            // Safari (iPhone/iPad) üçün
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    loader.style.display = 'none';
+                    video.play();
+                });
+            } else {
+                showStatus("❌ Brauzeriniz bu formatı dəstəkləmir.");
+            }
+        }
+
+        function showStatus(msg) {
+            statusMsg.innerText = msg;
+            statusMsg.style.display = 'block';
+        }
+
+        // Axtarış funksiyası
+        searchInput.addEventListener('input', (e) => {
+            renderChannels(e.target.value);
+        });
+
+        // Başlanğıcda kanalları yüklə
+        renderChannels();
+        // İlk kanalı avtomatik açmasın (sakit qalsın), istifadəçi seçsin.
+    </script>
+
+</body>
+</html>
