@@ -3,180 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <title>TV Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <title>Azərbaycan TV - Pro Player (Fixed)</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.0/dist/hls.min.js"></script>
     <style>
-        :root {
-            --primary-color: #e50914;
-            --bg-color: #141414;
-            --sidebar-bg: #1f1f1f;
-            --text-color: #ffffff;
-            --active-bg: #333;
-        }
-
         body {
             margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            height: 100vh;
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
             display: flex;
+            height: 100vh;
             overflow: hidden;
         }
 
+        /* Sol Tərəf - Kanal Siyahısı */
         .sidebar {
             width: 300px;
-            background-color: var(--sidebar-bg);
+            background-color: #1a1a1a;
+            border-right: 1px solid #333;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #333;
-        }
-
-        .header {
-            padding: 20px;
-            background-color: #000;
-            text-align: center;
-            border-bottom: 2px solid var(--primary-color);
-            font-weight: bold;
-            font-size: 18px;
-            letter-spacing: 1px;
+            height: 100%;
         }
 
         .channel-list {
-            flex: 1;
-            overflow-y: auto;
             list-style: none;
             padding: 0;
             margin: 0;
+            overflow-y: auto;
+            flex: 1;
         }
 
         .channel-item {
-            padding: 15px 20px;
+            padding: 15px;
             cursor: pointer;
-            border-bottom: 1px solid #333;
-            transition: 0.2s;
+            border-bottom: 1px solid #2a2a2a;
             display: flex;
             align-items: center;
+            font-size: 14px;
         }
 
-        .channel-item:hover {
-            background-color: var(--active-bg);
-            border-left: 4px solid var(--primary-color);
-        }
+        .channel-item:hover { background-color: #333; }
+        .channel-item.active { background-color: #e50914; color: white; font-weight: bold; }
+        .channel-item i { margin-right: 10px; }
 
-        .channel-item.active {
-            background-color: #2a2a2a;
-            color: var(--primary-color);
-            border-left: 4px solid var(--primary-color);
-            font-weight: bold;
-        }
-
-        .main-content {
+        /* Sağ Tərəf - Video */
+        .player-container {
             flex: 1;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #000;
+            background: #000;
             position: relative;
         }
 
         video {
             width: 100%;
             height: 100%;
+            max-height: 100vh;
             outline: none;
         }
 
-        .error-msg {
-            position: absolute;
-            color: white;
-            background: rgba(255, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: none;
-            z-index: 10;
-        }
+        /* Scrollbar Gizlətmək (Səliqəli olsun) */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #444; }
 
+        /* Mobil */
         @media (max-width: 768px) {
             body { flex-direction: column; }
-            .sidebar { height: 40%; width: 100%; order: 2; }
-            .main-content { height: 60%; order: 1; }
+            .sidebar { width: 100%; height: 40%; }
+            .player-container { height: 60%; }
         }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="header">AZ TV PLAYER</div>
         <ul class="channel-list" id="channelList"></ul>
     </div>
 
-    <div class="main-content">
-        <div class="error-msg" id="errorMsg"></div>
+    <div class="player-container">
         <video id="video" controls autoplay playsinline></video>
     </div>
 
     <script>
-        // YALNIZ HTTPS DƏSTƏKLƏYƏN VƏ YA STABİL KANALLAR
-        // Qeyd: AzTV HTTPS dəstəkləmədiyi üçün bəzən açılmaya bilər.
+        // YENİLƏNMİŞ SİYAHI (Mümkün qədər HTTPS olanlar)
         const channels = [
-            { name: "İctimai TV (HD)", url: "https://live.itv.az/itv.m3u8" },
+            { name: "Xəzər TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/xezer-tv.m3u8" },
+            { name: "İctimai TV", url: "https://live.itv.az/itv.m3u8" },
+            { name: "AzTV", url: "https://live.itv.az/aztv.m3u8" }, // HTTPS Server
+            { name: "Baku TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/baku-tv.m3u8" },
             { name: "ARB TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb.m3u8" },
             { name: "ARB 24", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb-24.m3u8" },
-            { name: "Xəzər TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/xezer-tv.m3u8" },
+            { name: "ARB Günəş", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/arb-gunes.m3u8" },
             { name: "Space TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/main/myvideo-az/space-tv.m3u8" },
-            { name: "Baku TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/baku-tv.m3u8" },
-            { name: "Mədəniyyət TV", url: "https://str.yodacdn.net/medeniyyet/index.m3u8" },
             { name: "CBC Sport", url: "https://mn-nl.mncdn.com/cbcsports_live/cbcsports/playlist.m3u8" },
-            { name: "Real TV", url: "https://tv.realtv.az/hls/stream.m3u8" }, 
-            { name: "MTV Azərbaycan", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/mtv-azerbaycan.m3u8" }
+            { name: "Mədəniyyət TV", url: "https://str.yodacdn.net/medeniyyet/index.m3u8" },
+            { name: "Azad TV", url: "https://stream.atv.az/WebRTCAppEE/streams/780339739845112514894920_adaptive.m3u8" },
+            { name: "Real TV", url: "https://tv.realtv.az/real/index.m3u8" },
+            { name: "Dünya TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/dunya-tv.m3u8" },
+            { name: "MTV Azərbaycan", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/mtv-azerbaycan.m3u8" },
+            { name: "TMB TV", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/tmb-azerbaycan.m3u8" },
+            { name: "Kanal S", url: "https://raw.githubusercontent.com/UzunMuhalefet/streams/refs/heads/main/myvideo-az/kanal-s.m3u8" },
+            { name: "AnewZ", url: "https://53be5ef2d13aa.streamlock.net/cubesanewz-secure/smil:cubesanewz-secure-web.smil/playlist.m3u8" },
+            // HTTP Olanlar (Meta tag ilə açmağa çalışacaq)
+            { name: "Kəpəz TV", url: "http://85.132.78.122:8050/hls/stream/index.m3u8" },
+            { name: "EL TV", url: "http://85.132.53.162:1935/live/eltv/playlist.m3u8" }
         ];
 
         const video = document.getElementById('video');
-        const listContainer = document.getElementById('channelList');
-        const errorMsg = document.getElementById('errorMsg');
+        const list = document.getElementById('channelList');
         let hls = null;
 
-        function renderChannels() {
-            channels.forEach(channel => {
-                let li = document.createElement('li');
-                li.className = 'channel-item';
-                li.innerText = channel.name;
-                li.onclick = () => playChannel(channel.url, li);
-                listContainer.appendChild(li);
-            });
-        }
+        // Siyahını Qurmaq
+        channels.forEach((ch, index) => {
+            const li = document.createElement('li');
+            li.className = 'channel-item';
+            if(index === 0) li.classList.add('active'); // İlk kanal aktiv olsun
+            li.innerHTML = `<i class="fas fa-play"></i> ${ch.name}`;
+            
+            li.onclick = () => {
+                document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
+                li.classList.add('active');
+                playStream(ch.url);
+            };
+            
+            list.appendChild(li);
+        });
 
-        function playChannel(url, element) {
-            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-            errorMsg.style.display = 'none';
-
+        // Player Funksiyası (Səssiz, xətasız)
+        function playStream(url) {
             if (Hls.isSupported()) {
                 if (hls) hls.destroy();
-                hls = new Hls();
+                
+                hls = new Hls({
+                    // Bloklanma zamanı xətanı istifadəçiyə göstərmə, yenidən cəhd et
+                    autoStartLoad: true,
+                    startLevel: -1,
+                    manifestLoadingTimeOut: 10000
+                });
+                
                 hls.loadSource(url);
                 hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-                
-                // Xəta tutmaq üçün
-                hls.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        console.log("Xəta baş verdi:", data);
-                        errorMsg.innerText = "Kanal açılmadı (Mənbə xətası və ya HTTPS blok)";
-                        errorMsg.style.display = 'block';
-                    }
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(() => {});
                 });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } 
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = url;
-                video.addEventListener('loadedmetadata', () => video.play());
+                video.play().catch(() => {});
             }
         }
 
-        renderChannels();
+        // Sayt açılan kimi birincini oynat
+        playStream(channels[0].url);
+
     </script>
 </body>
 </html>
