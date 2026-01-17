@@ -1,10 +1,9 @@
-// src/channels.js
+// channels.js
 
-const channels = [
+const channelsList = [
   {
     id: 1,
     name: "Alvin Channel TV",
-    logo: "https://via.placeholder.com/50", // Logo şəkli tapanda bura qoyarsan
     url: "https://cdn10-alvinchannel.yayin.com.tr/alvinchannel/alvinchannel/playlist.m3u8"
   },
   {
@@ -90,7 +89,6 @@ const channels = [
   {
     id: 18,
     name: "AzTV",
-    // QEYD: Bu linkdə token var, vaxtı bitəndə yeniləmək lazım ola bilər
     url: "http://109.205.166.68/server124/aztv/index3.m3u8?st=AzGSZjk1DpXY1SLc1m4OvA&e=1676581573"
   },
   {
@@ -99,5 +97,3 @@ const channels = [
     url: "http://85.132.78.122:8050/hls/stream/index.m3u8"
   }
 ];
-
-export default channels;
