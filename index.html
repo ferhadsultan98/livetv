@@ -55,6 +55,7 @@
             object-fit: contain;
             background: #000;
             cursor: none;
+            pointer-events: none
         }
 
         /* Channel Overlay */
@@ -837,6 +838,7 @@
                 menuToggleBtn.classList.add('visible');
                 footerInfo.classList.add('visible');
                 document.body.classList.add('show-cursor');
+                video.style.cursor = 'default';
 
                 // Clear existing timeout
                 if (controlsTimeout) {
@@ -857,6 +859,7 @@
                 menuToggleBtn.classList.remove('visible');
                 footerInfo.classList.remove('visible');
                 document.body.classList.remove('show-cursor');
+                video.style.cursor = 'none';
             }
         }
 
