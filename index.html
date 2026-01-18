@@ -27,13 +27,14 @@
             position: fixed;
             width: 100%;
             touch-action: pan-y;
+            cursor: none; /* Kursorun gizlənməsi */
         }
 
         /* Main Layout */
         .tv-container {
             display: flex;
             height: 100vh;
-            height: 100dvh; /* Mobile viewport fix */
+            height: 100dvh;
             position: relative;
         }
 
@@ -53,6 +54,7 @@
             height: 100%;
             object-fit: contain;
             background: #000;
+            cursor: none;
         }
 
         /* Channel Overlay */
@@ -71,6 +73,7 @@
             box-shadow: 4px 0 40px rgba(0, 0, 0, 0.8);
             display: flex;
             flex-direction: column;
+            cursor: default;
         }
 
         .channel-overlay.active {
@@ -252,7 +255,7 @@
             transform: translateX(3px);
         }
 
-        /* Now Playing Banner */
+        /* Now Playing Banner - Auto Hide */
         .now-playing-banner {
             position: absolute;
             top: 20px;
@@ -267,19 +270,15 @@
             align-items: center;
             gap: 12px;
             z-index: 900;
-            animation: slideInTop 0.5s ease;
             pointer-events: none;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.5s ease;
         }
 
-        @keyframes slideInTop {
-            from {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+        .now-playing-banner.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .playing-icon {
@@ -316,7 +315,7 @@
             text-overflow: ellipsis;
         }
 
-        /* Menu Toggle Button - Mobile */
+        /* Menu Toggle Button - Auto Hide */
         .menu-toggle-btn {
             position: absolute;
             bottom: 100px;
@@ -334,7 +333,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .menu-toggle-btn.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
         }
 
         .menu-toggle-btn:active {
@@ -345,7 +353,7 @@
             display: none;
         }
 
-        /* Footer */
+        /* Footer - Auto Hide */
         .footer-info {
             position: absolute;
             bottom: 15px;
@@ -362,6 +370,16 @@
             font-size: 12px;
             z-index: 900;
             white-space: nowrap;
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .footer-info.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
         }
 
         .footer-info a {
@@ -417,7 +435,7 @@
             background: rgba(233, 69, 96, 0.9);
         }
 
-        /* Touch Gesture Indicator */
+        /* Gesture Hint */
         .gesture-hint {
             position: absolute;
             top: 50%;
@@ -455,6 +473,13 @@
             text-align: center;
         }
 
+        /* Show cursor when overlay open or controls visible */
+        body.show-cursor,
+        .channel-overlay,
+        .channel-overlay * {
+            cursor: default !important;
+        }
+
         /* Tablet Responsive */
         @media (min-width: 768px) and (max-width: 1024px) {
             .channel-overlay {
@@ -477,6 +502,10 @@
 
         /* Mobile Responsive */
         @media (max-width: 767px) {
+            body {
+                cursor: default;
+            }
+
             .channel-overlay {
                 width: 100%;
                 max-width: 100%;
@@ -629,6 +658,10 @@
 
         /* Landscape Mobile */
         @media (max-width: 767px) and (orientation: landscape) {
+            body {
+                cursor: default;
+            }
+
             .now-playing-banner {
                 top: 10px;
                 left: 10px;
@@ -691,7 +724,7 @@
         </div>
 
         <!-- Video Section -->
-        <div class="video-section">
+        <div class="video-section" id="videoSection">
             <video id="video" controls playsinline webkit-playsinline></video>
             
             <!-- Loading Spinner -->
@@ -712,7 +745,7 @@
             </button>
 
             <!-- Footer -->
-            <div class="footer-info">
+            <div class="footer-info" id="footerInfo">
                 <span>Developed by</span>
                 <a href="https://instagram.com/ferhad.sultann" target="_blank" rel="noopener noreferrer">
                     <i class="fab fa-instagram"></i>
@@ -735,6 +768,7 @@
         const PROXY_SERVER = "https://tvrs.primetradegroup.az/stream?url=";
         
         const video = document.getElementById('video');
+        const videoSection = document.getElementById('videoSection');
         const channelListContainer = document.getElementById('channelList');
         const channelOverlay = document.getElementById('channelOverlay');
         const nowPlayingBanner = document.getElementById('nowPlayingBanner');
@@ -745,6 +779,7 @@
         const searchInput = document.getElementById('searchInput');
         const gestureHint = document.getElementById('gestureHint');
         const gestureText = document.getElementById('gestureText');
+        const footerInfo = document.getElementById('footerInfo');
         
         let hls = null;
         let allChannels = [];
@@ -752,6 +787,10 @@
         let currentChannelIndex = 0;
         let channelElements = [];
         let overlayOpen = false;
+
+        // Auto-hide timer
+        let controlsTimeout = null;
+        const HIDE_DELAY = 5000; // 5 seconds
 
         // Touch gesture variables
         let touchStartX = 0;
@@ -783,8 +822,41 @@
                     channelOverlay.classList.add('active');
                     overlayOpen = true;
                 }
+
+                // Initial controls show
+                showControls();
             } else {
                 channelListContainer.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: rgba(255,255,255,0.5); font-size: 16px;">Kanal siyahısı yüklənmədi</div>';
+            }
+        }
+
+        // Show Controls
+        function showControls() {
+            if (!overlayOpen) {
+                nowPlayingBanner.classList.add('visible');
+                menuToggleBtn.classList.add('visible');
+                footerInfo.classList.add('visible');
+                document.body.classList.add('show-cursor');
+
+                // Clear existing timeout
+                if (controlsTimeout) {
+                    clearTimeout(controlsTimeout);
+                }
+
+                // Set new timeout to hide controls
+                controlsTimeout = setTimeout(() => {
+                    hideControls();
+                }, HIDE_DELAY);
+            }
+        }
+
+        // Hide Controls
+        function hideControls() {
+            if (!overlayOpen) {
+                nowPlayingBanner.classList.remove('visible');
+                menuToggleBtn.classList.remove('visible');
+                footerInfo.classList.remove('visible');
+                document.body.classList.remove('show-cursor');
             }
         }
 
@@ -851,6 +923,7 @@
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play().then(() => {
                         loading.style.display = 'none';
+                        showControls(); // Show controls when new channel starts
                     }).catch(e => {
                         console.log("Autoplay:", e);
                         loading.style.display = 'none';
@@ -867,6 +940,7 @@
                 video.addEventListener('loadedmetadata', function() {
                     video.play().then(() => {
                         loading.style.display = 'none';
+                        showControls();
                     }).catch(e => {
                         loading.style.display = 'none';
                     });
@@ -883,14 +957,21 @@
             overlayOpen = !overlayOpen;
             if (overlayOpen) {
                 channelOverlay.classList.add('active');
+                document.body.classList.add('show-cursor');
+                if (controlsTimeout) {
+                    clearTimeout(controlsTimeout);
+                }
+                hideControls();
             } else {
                 channelOverlay.classList.remove('active');
+                showControls();
             }
         }
 
         function closeOverlay() {
             overlayOpen = false;
             channelOverlay.classList.remove('active');
+            showControls();
         }
 
         // Next/Previous Channel
@@ -940,9 +1021,23 @@
         menuToggleBtn.addEventListener('click', toggleOverlay);
         closeBtn.addEventListener('click', closeOverlay);
 
+        // Mouse Movement Detection
+        videoSection.addEventListener('mousemove', function() {
+            if (!isMobile) {
+                showControls();
+            }
+        });
+
+        // Touch Detection for Mobile
+        videoSection.addEventListener('touchstart', function() {
+            showControls();
+        });
+
         // Keyboard Controls (TV Remote)
         document.addEventListener('keydown', function(e) {
             if (!overlayOpen) {
+                showControls(); // Show controls on any key press
+                
                 if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter') {
                     e.preventDefault();
                     toggleOverlay();
@@ -1021,11 +1116,9 @@
                     if (!overlayOpen) {
                         toggleOverlay();
                     }
-                } else {
-                    // Swipe left - close menu (handled by overlay itself)
                 }
             }
-            // Vertical swipe (when menu closed)
+            // Vertical swipe
             else if (Math.abs(deltaY) > minSwipeDistance) {
                 if (deltaY > 0) {
                     // Swipe down - previous channel
