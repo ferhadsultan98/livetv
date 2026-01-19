@@ -2,421 +2,1156 @@
 <html lang="az">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prime Trade Group - Premium Digital Catalog</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Prime TV Player - Smart TV & Mobile</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/3/turn.min.js"></script>
-
+    
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
-            position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: inherit;
-            filter: blur(30px);
-            opacity: 0.8;
-            z-index: -1;
-        }
-
-        #loader {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 24px;
-            z-index: 1000;
-            text-align: center;
-            font-weight: 300;
-            letter-spacing: 1px;
-        }
-
-        #loader i {
-            display: block;
-            font-size: 48px;
-            margin-bottom: 20px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .flipbook-container {
-            position: relative;
-            width: 100%;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #ffffff;
+            overflow: hidden;
             height: 100vh;
+            position: fixed;
+            width: 100%;
+            touch-action: pan-y;
+            cursor: none; /* Kursorun gizlənməsi */
+        }
+
+        /* Main Layout */
+        .tv-container {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-
-        .flipbook-container.loaded {
-            opacity: 1;
-        }
-
-        #flipbook {
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+            height: 100vh;
+            height: 100dvh;
             position: relative;
         }
 
-        .flipbook-page {
-            background: white;
+        /* Video Section */
+        .video-section {
+            flex: 1;
+            background: #000;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
         }
 
-        .flipbook-page canvas {
-            max-width: 100%;
-            max-height: 100%;
-            display: block;
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            cursor: none;
         }
 
-        /* Toolbar - Modern və Şık */
-        .toolbar {
+        /* Channel Overlay */
+        .channel-overlay {
             position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(120px);
-            background: rgba(0, 0, 0, 0.9);
+            left: -100%;
+            top: 0;
+            width: 420px;
+            max-width: 85%;
+            height: 100vh;
+            height: 100dvh;
+            background: linear-gradient(180deg, rgba(22, 33, 62, 0.98) 0%, rgba(15, 20, 25, 0.98) 100%);
             backdrop-filter: blur(20px);
-            padding: 15px 30px;
-            border-radius: 50px;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 4px 0 40px rgba(0, 0, 0, 0.8);
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            cursor: default;
+        }
+
+        .channel-overlay.active {
+            left: 0;
+        }
+
+        /* Overlay Header */
+        .overlay-header {
+            padding: 25px 20px;
+            background: rgba(233, 69, 96, 0.15);
+            border-bottom: 3px solid rgba(233, 69, 96, 0.5);
+            display: flex;
             align-items: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            z-index: 100;
-            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.4s;
-            opacity: 0;
+            justify-content: space-between;
         }
 
-        .toolbar.visible {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
-        .toolbar-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
+        .logo-icon {
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+            border-radius: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.5);
+        }
+
+        .header-text h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .header-text p {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 3px;
+        }
+
+        .close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            color: white;
+            font-size: 22px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
         }
 
-        .toolbar-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.1);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .toolbar-btn:active {
+        .close-btn:active {
+            background: rgba(233, 69, 96, 0.3);
             transform: scale(0.95);
         }
 
-        .page-indicator {
+        /* Search Box */
+        .search-container {
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 12px 45px 12px 20px;
             color: white;
-            font-size: 14px;
-            font-weight: 500;
-            min-width: 80px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #e94560;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 18px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        /* Channel List */
+        .channel-list-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 15px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .channel-item {
+            background: rgba(255, 255, 255, 0.08);
+            margin: 10px 0;
+            padding: 18px 16px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .channel-item:active {
+            transform: scale(0.97);
+        }
+
+        .channel-item.active {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.5) 0%, rgba(233, 69, 96, 0.3) 100%);
+            border-color: #e94560;
+            box-shadow: 0 8px 30px rgba(233, 69, 96, 0.4);
+        }
+
+        .channel-number {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            min-width: 55px;
             text-align: center;
-            letter-spacing: 0.5px;
+            color: white;
         }
 
-        .divider {
-            width: 1px;
-            height: 30px;
-            background: rgba(255, 255, 255, 0.2);
+        .channel-item.active .channel-number {
+            background: #e94560;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.5);
         }
 
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            #flipbook {
-                width: 90vw !important;
-                height: auto !important;
-            }
+        .channel-name {
+            flex: 1;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }
 
-        @media (max-width: 768px) {
-            .toolbar {
-                padding: 12px 20px;
-                gap: 10px;
-            }
-
-            .toolbar-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 16px;
-            }
-
-            .page-indicator {
-                font-size: 13px;
-                min-width: 60px;
-            }
+        .channel-arrow {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease;
         }
 
-        @media (max-width: 480px) {
-            .toolbar {
-                padding: 10px 15px;
-                gap: 8px;
-            }
-
-            .toolbar-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 14px;
-            }
+        .channel-item.active .channel-arrow {
+            color: #e94560;
+            transform: translateX(3px);
         }
 
-        /* Loading Animation */
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
+        /* Now Playing Banner - Auto Hide */
+        .now-playing-banner {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 16px 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(233, 69, 96, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 900;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.5s ease;
+        }
+
+        .now-playing-banner.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .playing-icon {
+            color: #e94560;
+            font-size: 24px;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .playing-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .playing-text h3 {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-bottom: 4px;
+        }
+
+        .playing-text p {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Menu Toggle Button - Auto Hide */
+        .menu-toggle-btn {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e94560 0%, #ff6b6b 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 950;
+            box-shadow: 0 6px 25px rgba(233, 69, 96, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .menu-toggle-btn.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+        }
+
+        .menu-toggle-btn:active {
+            transform: scale(0.9);
+        }
+
+        .menu-toggle-btn.hidden {
+            display: none;
+        }
+
+        /* Footer - Auto Hide */
+        .footer-info {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            z-index: 900;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .footer-info.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
+
+        .footer-info a {
+            color: #e94560;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .footer-info a:active {
+            transform: scale(0.95);
+        }
+
+        /* Loading Spinner */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70px;
+            height: 70px;
+            border: 5px solid rgba(233, 69, 96, 0.2);
+            border-top: 5px solid #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 950;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Scrollbar */
+        .channel-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .channel-list-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .channel-list-container::-webkit-scrollbar-thumb {
+            background: rgba(233, 69, 96, 0.6);
+            border-radius: 4px;
+        }
+
+        .channel-list-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(233, 69, 96, 0.9);
+        }
+
+        /* Gesture Hint */
+        .gesture-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 30px;
+            border-radius: 20px;
+            border: 2px solid rgba(233, 69, 96, 0.5);
+            display: none;
+            z-index: 980;
+            animation: fadeIn 0.3s ease;
+            pointer-events: none;
+        }
+
+        .gesture-hint.show {
+            display: block;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .gesture-hint i {
+            font-size: 40px;
+            color: #e94560;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .gesture-hint p {
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Show cursor when overlay open or controls visible */
+        body.show-cursor,
+        .channel-overlay,
+        .channel-overlay * {
+            cursor: default !important;
+        }
+
+        /* Tablet Responsive */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .channel-overlay {
+                width: 380px;
+            }
+
+            .now-playing-banner {
+                top: 25px;
+                left: 25px;
+                right: auto;
+                max-width: 450px;
+            }
+
+            .menu-toggle-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 26px;
+            }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 767px) {
+            body {
+                cursor: default;
+            }
+
+            .channel-overlay {
+                width: 100%;
+                max-width: 100%;
+                left: -100%;
+            }
+
+            .overlay-header {
+                padding: 20px 15px;
+            }
+
+            .logo-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+
+            .header-text h1 {
+                font-size: 20px;
+            }
+
+            .header-text p {
+                font-size: 12px;
+            }
+
+            .close-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+
+            .search-container {
+                padding: 12px 15px;
+            }
+
+            .channel-list-container {
+                padding: 10px;
+            }
+
+            .channel-item {
+                padding: 15px 12px;
+                margin: 8px 0;
+            }
+
+            .channel-number {
+                padding: 6px 12px;
+                font-size: 16px;
+                min-width: 50px;
+            }
+
+            .channel-name {
+                font-size: 15px;
+            }
+
+            .now-playing-banner {
+                top: 15px;
+                left: 15px;
+                right: 15px;
+                padding: 12px 15px;
+            }
+
+            .playing-icon {
+                font-size: 20px;
+            }
+
+            .playing-text p {
+                font-size: 15px;
+            }
+
+            .menu-toggle-btn {
+                width: 55px;
+                height: 55px;
+                font-size: 22px;
+                bottom: 80px;
+                right: 15px;
+            }
+
+            .footer-info {
+                bottom: 10px;
+                padding: 8px 15px;
+                font-size: 11px;
+            }
+        }
+
+        /* Very Small Mobile */
+        @media (max-width: 400px) {
+            .header-text h1 {
+                font-size: 18px;
+            }
+
+            .channel-name {
+                font-size: 14px;
+            }
+
+            .playing-text p {
+                font-size: 14px;
+            }
+
+            .footer-info {
+                font-size: 10px;
+            }
+        }
+
+        /* Large TV Screens */
+        @media (min-width: 1920px) {
+            .channel-overlay {
+                width: 550px;
+            }
+
+            .overlay-header {
+                padding: 30px 25px;
+            }
+
+            .logo-icon {
+                width: 65px;
+                height: 65px;
+                font-size: 32px;
+            }
+
+            .header-text h1 {
+                font-size: 28px;
+            }
+
+            .channel-item {
+                padding: 24px 20px;
+                margin: 12px 0;
+            }
+
+            .channel-number {
+                font-size: 22px;
+                padding: 10px 18px;
+                min-width: 65px;
+            }
+
+            .channel-name {
+                font-size: 22px;
+            }
+
+            .now-playing-banner {
+                padding: 22px 28px;
+            }
+
+            .playing-text p {
+                font-size: 24px;
+            }
+
+            .menu-toggle-btn {
+                display: none;
+            }
+        }
+
+        /* Landscape Mobile */
+        @media (max-width: 767px) and (orientation: landscape) {
+            body {
+                cursor: default;
+            }
+
+            .now-playing-banner {
+                top: 10px;
+                left: 10px;
+                right: auto;
+                max-width: 280px;
+                padding: 10px 12px;
+            }
+
+            .playing-text h3 {
+                font-size: 9px;
+            }
+
+            .playing-text p {
+                font-size: 13px;
+            }
+
+            .menu-toggle-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+                bottom: 15px;
+                right: 15px;
+            }
+
+            .footer-info {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="tv-container">
+        <!-- Channel Overlay -->
+        <div class="channel-overlay" id="channelOverlay">
+            <div class="overlay-header">
+                <div class="header-left">
+                    <div class="logo-icon">
+                        <i class="fas fa-tv"></i>
+                    </div>
+                    <div class="header-text">
+                        <h1>PRIME TV</h1>
+                        <p>Azerbaijan Kanalları</p>
+                    </div>
+                </div>
+                <button class="close-btn" id="closeBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
 
-    <div id="loader">
-        <i class="fas fa-book-open"></i>
-        <div>Kataloq Yüklənir...</div>
-    </div>
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Kanal axtar...">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+            </div>
 
-    <div class="flipbook-container" id="flipbookContainer">
-        <div id="flipbook"></div>
-    </div>
-
-    <div class="toolbar" id="toolbar">
-        <button class="toolbar-btn" id="zoomOut" title="Kiçilt">
-            <i class="fas fa-search-minus"></i>
-        </button>
-
-        <button class="toolbar-btn" id="prevPage" title="Əvvəlki Səhifə">
-            <i class="fas fa-chevron-left"></i>
-        </button>
-
-        <div class="page-indicator">
-            <span id="currentPage">1</span> / <span id="totalPages">-</span>
+            <div class="channel-list-container" id="channelList">
+                <!-- Channels loaded dynamically -->
+            </div>
         </div>
 
-        <button class="toolbar-btn" id="nextPage" title="Növbəti Səhifə">
-            <i class="fas fa-chevron-right"></i>
-        </button>
+        <!-- Video Section -->
+        <div class="video-section" id="videoSection">
+            <video id="video" controls playsinline webkit-playsinline></video>
+            
+            <!-- Loading Spinner -->
+            <div class="loading" id="loading"></div>
 
-        <button class="toolbar-btn" id="zoomIn" title="Böyüt">
-            <i class="fas fa-search-plus"></i>
-        </button>
+            <!-- Now Playing Banner -->
+            <div class="now-playing-banner" id="nowPlayingBanner">
+                <i class="fas fa-play-circle playing-icon"></i>
+                <div class="playing-text">
+                    <h3>İndi Oynadılır</h3>
+                    <p id="currentChannelName">-</p>
+                </div>
+            </div>
 
-        <div class="divider"></div>
+            <!-- Menu Toggle Button (Mobile) -->
+            <button class="menu-toggle-btn" id="menuToggleBtn">
+                <i class="fas fa-list"></i>
+            </button>
 
-        <a href="primetradegroup.pdf" download class="toolbar-btn" title="Yüklə">
-            <i class="fas fa-download"></i>
-        </a>
+            <!-- Footer -->
+            <div class="footer-info" id="footerInfo">
+                <span>Developed by</span>
+                <a href="https://instagram.com/ferhad.sultann" target="_blank" rel="noopener noreferrer">
+                    <i class="fab fa-instagram"></i>
+                    Farhad Sultanov
+                </a>
+            </div>
 
-        <button class="toolbar-btn" id="fullscreen" title="Tam Ekran">
-            <i class="fas fa-expand"></i>
-        </button>
+            <!-- Gesture Hint -->
+            <div class="gesture-hint" id="gestureHint">
+                <i class="fas fa-hand-pointer"></i>
+                <p id="gestureText">Swipe</p>
+            </div>
+        </div>
     </div>
 
+    <script src="channels.js"></script>
+
     <script>
-        const PDF_PATH = 'primetradegroup.pdf';
-        const pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // PROXY SERVER
+        const PROXY_SERVER = "https://tvrs.primetradegroup.az/stream?url=";
+        
+        const video = document.getElementById('video');
+        const videoSection = document.getElementById('videoSection');
+        const channelListContainer = document.getElementById('channelList');
+        const channelOverlay = document.getElementById('channelOverlay');
+        const nowPlayingBanner = document.getElementById('nowPlayingBanner');
+        const currentChannelName = document.getElementById('currentChannelName');
+        const loading = document.getElementById('loading');
+        const menuToggleBtn = document.getElementById('menuToggleBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const searchInput = document.getElementById('searchInput');
+        const gestureHint = document.getElementById('gestureHint');
+        const gestureText = document.getElementById('gestureText');
+        const footerInfo = document.getElementById('footerInfo');
+        
+        let hls = null;
+        let allChannels = [];
+        let filteredChannels = [];
+        let currentChannelIndex = 0;
+        let channelElements = [];
+        let overlayOpen = false;
 
-        let pdfDoc = null;
-        let currentZoom = 1;
-        let pages = [];
-        let hideToolbarTimer;
-        let isMobile = window.innerWidth < 768;
+        // Auto-hide timer
+        let controlsTimeout = null;
+        const HIDE_DELAY = 5000; // 5 seconds
 
-        // Toolbar göstərmə
-        function showToolbar() {
-            const toolbar = document.getElementById('toolbar');
-            toolbar.classList.add('visible');
-            clearTimeout(hideToolbarTimer);
-            hideToolbarTimer = setTimeout(() => {
-                toolbar.classList.remove('visible');
-            }, 3000);
-        }
+        // Touch gesture variables
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
 
-        // PDF Yükləmə
-        async function loadPDF() {
-            try {
-                const loadingTask = pdfjsLib.getDocument(PDF_PATH);
-                pdfDoc = await loadingTask.promise;
+        // Detect if mobile/tablet
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        // Initialize
+        function init() {
+            if (typeof channelsList !== 'undefined' && channelsList.length > 0) {
+                allChannels = channelsList;
+                filteredChannels = [...allChannels];
+                renderChannels();
                 
-                document.getElementById('totalPages').textContent = pdfDoc.numPages;
+                // Auto play first channel
+                setTimeout(() => {
+                    if (channelElements.length > 0) {
+                        playChannel(allChannels[0], channelElements[0]);
+                    }
+                }, 500);
 
-                // Səhifələri render et
-                for (let i = 1; i <= pdfDoc.numPages; i++) {
-                    const page = await pdfDoc.getPage(i);
-                    const scale = isMobile ? 1.5 : 2;
-                    const viewport = page.getViewport({ scale });
-
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    await page.render({
-                        canvasContext: context,
-                        viewport: viewport
-                    }).promise;
-
-                    pages.push(canvas);
+                // Hide menu button on large screens
+                if (window.innerWidth >= 1920) {
+                    menuToggleBtn.classList.add('hidden');
+                    channelOverlay.classList.add('active');
+                    overlayOpen = true;
                 }
 
-                initFlipbook();
-            } catch (error) {
-                document.getElementById('loader').innerHTML = 
-                    '<i class="fas fa-exclamation-triangle"></i><div>PDF yüklənə bilmədi</div>';
-                console.error(error);
+                // Initial controls show
+                showControls();
+            } else {
+                channelListContainer.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: rgba(255,255,255,0.5); font-size: 16px;">Kanal siyahısı yüklənmədi</div>';
             }
         }
 
-        // Flipbook Yaratma
-        function initFlipbook() {
-            const flipbook = $('#flipbook');
+        // Show Controls
+        function showControls() {
+            if (!overlayOpen) {
+                nowPlayingBanner.classList.add('visible');
+                menuToggleBtn.classList.add('visible');
+                footerInfo.classList.add('visible');
+                document.body.classList.add('show-cursor');
+
+                // Clear existing timeout
+                if (controlsTimeout) {
+                    clearTimeout(controlsTimeout);
+                }
+
+                // Set new timeout to hide controls
+                controlsTimeout = setTimeout(() => {
+                    hideControls();
+                }, HIDE_DELAY);
+            }
+        }
+
+        // Hide Controls
+        function hideControls() {
+            if (!overlayOpen) {
+                nowPlayingBanner.classList.remove('visible');
+                menuToggleBtn.classList.remove('visible');
+                footerInfo.classList.remove('visible');
+                document.body.classList.remove('show-cursor');
+            }
+        }
+
+        // Render Channels
+        function renderChannels() {
+            channelListContainer.innerHTML = '';
+            channelElements = [];
             
-            // Səhifələri əlavə et
-            pages.forEach((canvas, index) => {
-                const pageDiv = $('<div class="flipbook-page"></div>');
-                pageDiv.append(canvas);
-                flipbook.append(pageDiv);
+            if (filteredChannels.length === 0) {
+                channelListContainer.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: rgba(255,255,255,0.5); font-size: 16px;">Kanal tapılmadı</div>';
+                return;
+            }
+
+            filteredChannels.forEach((channel, index) => {
+                const div = document.createElement('div');
+                div.className = 'channel-item';
+                div.tabIndex = 0;
+                div.dataset.index = index;
+                div.innerHTML = `
+                    <span class="channel-number">${index + 1}</span>
+                    <span class="channel-name">${channel.name}</span>
+                    <i class="fas fa-chevron-right channel-arrow"></i>
+                `;
+                
+                div.onclick = () => {
+                    currentChannelIndex = index;
+                    playChannel(channel, div);
+                    if (isMobile || window.innerWidth < 1920) {
+                        setTimeout(() => closeOverlay(), 300);
+                    }
+                };
+                
+                channelListContainer.appendChild(div);
+                channelElements.push(div);
             });
+        }
 
-            // Ölçü hesablama
-            const pageWidth = isMobile ? window.innerWidth * 0.85 : 450;
-            const pageHeight = isMobile ? window.innerHeight * 0.7 : 636;
+        // Play Channel
+        function playChannel(channel, element) {
+            channelElements.forEach(el => el.classList.remove('active'));
+            if (element) element.classList.add('active');
 
-            // Turn.js başlat
-            flipbook.turn({
-                width: pageWidth * (isMobile ? 1 : 2),
-                height: pageHeight,
-                autoCenter: true,
-                elevation: 50,
-                gradients: true,
-                acceleration: true,
-                display: isMobile ? 'single' : 'double',
-                when: {
-                    turned: function(event, page) {
-                        document.getElementById('currentPage').textContent = page;
-                        showToolbar();
+            loading.style.display = 'block';
+            currentChannelName.textContent = channel.name;
+
+            const finalUrl = PROXY_SERVER + encodeURIComponent(channel.url);
+
+            console.log("▶️ Playing:", channel.name);
+
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+                
+                hls.loadSource(finalUrl);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play().then(() => {
+                        loading.style.display = 'none';
+                        showControls(); // Show controls when new channel starts
+                    }).catch(e => {
+                        console.log("Autoplay:", e);
+                        loading.style.display = 'none';
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error("HLS Error:", data);
+                    loading.style.display = 'none';
+                });
+            }
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = finalUrl;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play().then(() => {
+                        loading.style.display = 'none';
+                        showControls();
+                    }).catch(e => {
+                        loading.style.display = 'none';
+                    });
+                });
+            }
+
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // Toggle Overlay
+        function toggleOverlay() {
+            overlayOpen = !overlayOpen;
+            if (overlayOpen) {
+                channelOverlay.classList.add('active');
+                document.body.classList.add('show-cursor');
+                if (controlsTimeout) {
+                    clearTimeout(controlsTimeout);
+                }
+                hideControls();
+            } else {
+                channelOverlay.classList.remove('active');
+                showControls();
+            }
+        }
+
+        function closeOverlay() {
+            overlayOpen = false;
+            channelOverlay.classList.remove('active');
+            showControls();
+        }
+
+        // Next/Previous Channel
+        function nextChannel() {
+            if (currentChannelIndex < filteredChannels.length - 1) {
+                currentChannelIndex++;
+                playChannel(filteredChannels[currentChannelIndex], channelElements[currentChannelIndex]);
+                showGestureHint('fa-forward', 'Növbəti Kanal');
+            }
+        }
+
+        function previousChannel() {
+            if (currentChannelIndex > 0) {
+                currentChannelIndex--;
+                playChannel(filteredChannels[currentChannelIndex], channelElements[currentChannelIndex]);
+                showGestureHint('fa-backward', 'Əvvəlki Kanal');
+            }
+        }
+
+        // Show Gesture Hint
+        function showGestureHint(icon, text) {
+            gestureHint.querySelector('i').className = `fas ${icon}`;
+            gestureText.textContent = text;
+            gestureHint.classList.add('show');
+            setTimeout(() => {
+                gestureHint.classList.remove('show');
+            }, 1500);
+        }
+
+        // Search Functionality
+        searchInput.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            
+            if (query === '') {
+                filteredChannels = [...allChannels];
+            } else {
+                filteredChannels = allChannels.filter(channel => 
+                    channel.name.toLowerCase().includes(query)
+                );
+            }
+            
+            currentChannelIndex = 0;
+            renderChannels();
+        });
+
+        // Button Events
+        menuToggleBtn.addEventListener('click', toggleOverlay);
+        closeBtn.addEventListener('click', closeOverlay);
+
+        // Mouse Movement Detection
+        videoSection.addEventListener('mousemove', function() {
+            if (!isMobile) {
+                showControls();
+            }
+        });
+
+        // Touch Detection for Mobile
+        videoSection.addEventListener('touchstart', function() {
+            showControls();
+        });
+
+        // Keyboard Controls (TV Remote)
+        document.addEventListener('keydown', function(e) {
+            if (!overlayOpen) {
+                showControls(); // Show controls on any key press
+                
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter') {
+                    e.preventDefault();
+                    toggleOverlay();
+                }
+                else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    previousChannel();
+                }
+                else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    nextChannel();
+                }
+            } else {
+                if (e.key === 'ArrowLeft' || e.key === 'Escape' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    closeOverlay();
+                }
+                else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (currentChannelIndex > 0) {
+                        currentChannelIndex--;
+                        channelElements[currentChannelIndex].focus();
+                        channelElements[currentChannelIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
-            });
-
-            // Loading gizlət
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('flipbookContainer').classList.add('loaded', 'fade-in');
-            
-            showToolbar();
-            setupControls();
-        }
-
-        // Kontrol düymələri
-        function setupControls() {
-            const flipbook = $('#flipbook');
-
-            document.getElementById('prevPage').onclick = () => {
-                flipbook.turn('previous');
-                showToolbar();
-            };
-
-            document.getElementById('nextPage').onclick = () => {
-                flipbook.turn('next');
-                showToolbar();
-            };
-
-            document.getElementById('zoomIn').onclick = () => {
-                if (currentZoom < 1.5) {
-                    currentZoom += 0.1;
-                    flipbook.css('transform', `scale(${currentZoom})`);
-                    showToolbar();
+                else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (currentChannelIndex < channelElements.length - 1) {
+                        currentChannelIndex++;
+                        channelElements[currentChannelIndex].focus();
+                        channelElements[currentChannelIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
-            };
-
-            document.getElementById('zoomOut').onclick = () => {
-                if (currentZoom > 0.7) {
-                    currentZoom -= 0.1;
-                    flipbook.css('transform', `scale(${currentZoom})`);
-                    showToolbar();
+                else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    channelElements[currentChannelIndex].click();
                 }
-            };
+            }
 
-            document.getElementById('fullscreen').onclick = () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
+            // Number shortcuts
+            if (e.key >= '0' && e.key <= '9') {
+                const num = parseInt(e.key);
+                if (num === 0 && filteredChannels.length >= 10) {
+                    currentChannelIndex = 9;
+                    playChannel(filteredChannels[9], channelElements[9]);
+                } else if (num > 0 && num <= filteredChannels.length) {
+                    currentChannelIndex = num - 1;
+                    playChannel(filteredChannels[num - 1], channelElements[num - 1]);
+                }
+            }
+        });
+
+        // Touch Gestures for Mobile
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function(e) {
+            if (overlayOpen) return;
+
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleGesture();
+        }, { passive: true });
+
+        function handleGesture() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const minSwipeDistance = 50;
+
+            // Horizontal swipe
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                if (deltaX > 0) {
+                    // Swipe right - open menu
+                    if (!overlayOpen) {
+                        toggleOverlay();
+                    }
+                }
+            }
+            // Vertical swipe
+            else if (Math.abs(deltaY) > minSwipeDistance) {
+                if (deltaY > 0) {
+                    // Swipe down - previous channel
+                    previousChannel();
                 } else {
-                    document.exitFullscreen();
+                    // Swipe up - next channel
+                    nextChannel();
                 }
-                showToolbar();
-            };
-
-            // Klaviatura
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowLeft') flipbook.turn('previous');
-                if (e.key === 'ArrowRight') flipbook.turn('next');
-                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') showToolbar();
-            });
-
-            // Mouse/Touch hərəkətləri
-            document.addEventListener('mousemove', showToolbar);
-            document.addEventListener('touchstart', showToolbar);
-
-            // Resize
-            window.addEventListener('resize', () => {
-                const wasMobile = isMobile;
-                isMobile = window.innerWidth < 768;
-                
-                if (wasMobile !== isMobile) {
-                    location.reload();
-                }
-            });
+            }
         }
 
-        // Başlat
-        loadPDF();
-    </script>
+        // Prevent pull-to-refresh on mobile
+        document.body.addEventListener('touchmove', function(e) {
+            if (!channelOverlay.contains(e.target)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1920) {
+                menuToggleBtn.classList.add('hidden');
+                if (!overlayOpen) {
+                    channelOverlay.classList.add('active');
+                    overlayOpen = true;
+                }
+            } else {
+                menuToggleBtn.classList.remove('hidden');
+            }
+        });
+
+        // Initialize app
+        init();
+    </script>
 </body>
 </html>
