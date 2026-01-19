@@ -726,7 +726,8 @@
 
         <!-- Video Section -->
         <div class="video-section" id="videoSection">
-            <video id="video" controls playsinline webkit-playsinline></video>
+           <video id="video" muted controls playsinline webkit-playsinline></video>
+
             
             <!-- Loading Spinner -->
             <div class="loading" id="loading"></div>
@@ -923,32 +924,38 @@
                 hls.loadSource(finalUrl);
                 hls.attachMedia(video);
                 
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().then(() => {
-                        loading.style.display = 'none';
-                        showControls(); // Show controls when new channel starts
-                    }).catch(e => {
-                        console.log("Autoplay:", e);
-                        loading.style.display = 'none';
-                    });
-                });
+               hls.on(Hls.Events.MANIFEST_PARSED, function() {
+    video.muted = true; // ƏlavƏ et
+    video.play().then(() => {
+        loading.style.display = 'none';
+        video.muted = false; // ƏlavƏ et
+        showControls();
+    }).catch(e => {
+        console.log("Autoplay:", e);
+        loading.style.display = 'none';
+    });
+});
 
                 hls.on(Hls.Events.ERROR, function(event, data) {
                     console.error("HLS Error:", data);
                     loading.style.display = 'none';
                 });
             }
-            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = finalUrl;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play().then(() => {
-                        loading.style.display = 'none';
-                        showControls();
-                    }).catch(e => {
-                        loading.style.display = 'none';
-                    });
-                });
-            }
+           else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = finalUrl;
+    video.muted = true; // ƏlavƏ et
+    
+    video.addEventListener('loadedmetadata', function() {
+        video.play().then(() => {
+            loading.style.display = 'none';
+            video.muted = false; // ƏlavƏ et
+            showControls();
+        }).catch(e => {
+            loading.style.display = 'none';
+        });
+    });
+}
+
 
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
